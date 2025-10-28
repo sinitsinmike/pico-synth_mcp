@@ -65,6 +65,10 @@ target_link_libraries(pico-synth PRIVATE
     pico_synth_engine
     pico_synth_midi
     pico_synth_tui
+    hardware_clocks
+    hardware_i2c
+    hardware_uart
+    hardware_pio
 )
 
 target_compile_definitions(tinyusb_device INTERFACE
@@ -72,8 +76,14 @@ target_compile_definitions(tinyusb_device INTERFACE
 )
 
 pico_enable_stdio_uart(pico-synth 1)
-pico_add_extra_outputs(pico-synth)
 
 add_subdirectory(engine)
 add_subdirectory(midi)
 add_subdirectory(tui)
+
+# Ensure UF2 artifacts are generated
+pico_add_extra_outputs(pico-synth)
+
+add_subdirectory(features)
+target_sources(pico-synth PRIVATE screen-features.c screen-features.h)
+target_link_libraries(pico-synth pico_synth_features)
