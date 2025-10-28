@@ -155,6 +155,7 @@ select_byte_callback(ps_tui_t *tui, const ps_tui_screen_select_byte_t *sb, ps_tu
 void
 ec11_callback(ps_tui_t *tui, ps_tui_encoder_action_t act)
 {
+    if (act == PS_TUI_ENCODER_ACTION_BUTTON_LONG && tui->on_long_press) { tui->on_long_press(tui); return; }
     hard_assert(tui);
     if (tui->_current_screen == NULL)
         return;

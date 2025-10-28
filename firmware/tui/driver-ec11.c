@@ -43,7 +43,31 @@ ec11_init(ps_tui_t *tui)
 static inline void
 button_task(ps_tui_t *tui)
 {
-    bool button = gpio_get(tui->encoder.button);
+    
+    // Long-press detection (active-low button)
+    uint64_t now_lp = time_us_64();
+    bool pressed = gpio_get(tui->encoder.button) == 0;
+    if (pressed) {
+        if (tui->encoder._button_down_since == 0)
+            tui->encoder._button_down_since = now_lp;
+        if (!tui->encoder._long_sent && tui->encoder.button_long_us > 0 &&
+            (now_lp - tui->encoder._button_down_since) >= tui->encoder.button_long_us) {
+            tui->encoder._long_sent = true;
+            tui->encoder._button_hit = now_lp;
+            ec11_callback(tui, PS_TUI_ENCODER_ACTION_BUTTON_LONG);
+            return;
+        }
+    } else {
+        if (tui->encoder._button_down_since != 0 && !tui->encoder._long_sent) {
+            if (now_lp - tui->encoder._button_hit >= tui->encoder.button_debounce_us) {
+                tui->encoder._button_hit = now_lp;
+                ec11_callback(tui, PS_TUI_ENCODER_ACTION_BUTTON);
+            }
+        }
+        tui->encoder._button_down_since = 0;
+        tui->encoder._long_sent = false;
+    }
+bool button = gpio_get(tui->encoder.button);
     if (button)
         return;
 
