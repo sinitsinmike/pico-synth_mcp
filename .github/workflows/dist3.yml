@@ -1,0 +1,63 @@
+name: dist_3
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: main
+  cancel-in-progress: true
+
+env:
+  XPACK_ARM_TOOLCHAIN_VERSION: "13.3.1-1.1"
+  SDK_REF: "1.5.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo into pico-synth
+        uses: actions/checkout@v4
+        with:
+          path: pico-synth
+          fetch-depth: 0
+
+      - name: Checkout pico-sdk
+        uses: actions/checkout@v4
+        with:
+          repository: raspberrypi/pico-sdk
+          ref: ${{ env.SDK_REF }}
+          submodules: true
+          path: pico-sdk
+
+      - name: Install arm-none-eabi toolchain (xPack)
+        run: |
+          wget -q "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v${XPACK_ARM_TOOLCHAIN_VERSION}/xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz"
+          wget -q "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v${XPACK_ARM_TOOLCHAIN_VERSION}/xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz.sha"
+          sha256sum --check "xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz.sha"
+          tar -xf "xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz"
+          echo "${{ github.workspace }}/xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}/bin" >> $GITHUB_PATH
+          echo "PICO_SDK_PATH=${{ github.workspace }}/pico-sdk" >> $GITHUB_ENV
+
+      - name: Install build deps
+        run: |
+          sudo apt update
+          sudo apt install -y --no-install-recommends ninja-build
+
+      - name: Configure
+        run: |
+          cmake -B "${{ github.workspace }}/build"                 -D CMAKE_BUILD_TYPE=Release                 -G Ninja                 -S "${{ github.workspace }}/pico-synth/firmware"
+
+      - name: Build
+        run: cmake --build "${{ github.workspace }}/build"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            build/pico-synth.uf2
+            build/pico-synth.elf
