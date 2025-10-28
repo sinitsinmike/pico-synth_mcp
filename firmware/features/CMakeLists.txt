@@ -1,10 +1,14 @@
-add_library(pico_synth_features
+# Features module built as a STATIC library.
+# Do not link TUI or pico_stdlib here to avoid INTERFACE_SOURCES being
+# compiled inside this target. The final executable links everything.
+
+add_library(pico_synth_features STATIC
     features.c
     features-config.h
     feature_midi_monitor.c
 )
 
-# Public include dirs so <pico-synth/tui.h> and <pico-synth/midi.h> resolve
+# Public headers for dependent targets
 target_include_directories(pico_synth_features
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}
@@ -12,10 +16,4 @@ target_include_directories(pico_synth_features
         ${CMAKE_CURRENT_LIST_DIR}/../midi/include
 )
 
-# Link against the libraries that export those headers/APIs
-target_link_libraries(pico_synth_features
-    PUBLIC
-        pico_stdlib
-        pico_synth_tui
-        pico_synth_midi
-)
+# Intentionally NO target_link_libraries here; the executable links TUI/MIDI/SDK.
