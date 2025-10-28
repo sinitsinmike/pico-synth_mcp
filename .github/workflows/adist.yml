@@ -1,0 +1,59 @@
+name: A_dist
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 1
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build cmake build-essential python3
+
+      - name: Prepare SDK (if not present)
+        run: |
+          if [ ! -d "${PICO_SDK_PATH}" ]; then
+            git clone --depth 1 --branch 1.5.1 https://github.com/raspberrypi/pico-sdk.git "${PICO_SDK_PATH}"
+            git -C "${PICO_SDK_PATH}" submodule update --init
+          fi
+
+      - name: Resolve firmware path
+        id: src
+        run: |
+          set -eux
+          if [ -d "${GITHUB_WORKSPACE}/pico-synth/firmware" ]; then
+            echo "path=${GITHUB_WORKSPACE}/pico-synth/firmware" >> $GITHUB_OUTPUT
+          elif [ -d "${GITHUB_WORKSPACE}/firmware" ]; then
+            echo "path=${GITHUB_WORKSPACE}/firmware" >> $GITHUB_OUTPUT
+          else
+            echo "Repo layout:"
+            ls -la "${GITHUB_WORKSPACE}"
+            echo "::error::Could not find firmware directory"
+            exit 1
+          fi
+
+      - name: Configure (Ninja, Release)
+        run: cmake -S "${{ steps.src.outputs.path }}" -B "${{ github.workspace }}/build" -G Ninja -D CMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build "${{ github.workspace }}/build"
+
+      - name: Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            ${{ github.workspace }}/build/*.uf2
+            ${{ github.workspace }}/build/*.elf
