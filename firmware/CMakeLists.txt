@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021-2022 Rafael G. Martins <rafael@rafaelmartins.eng.br>
+# SPDX-FileCopyrightText: 2021-2022 Rafael G. Martins
 # SPDX-License-Identifier: BSD-3-Clause
 
 cmake_minimum_required(VERSION 3.12)
@@ -53,18 +53,32 @@ add_executable(pico-synth
     screen-splash.c
     screen-splash.h
 
+    # NEW: Features screen
+    screen-features.c
+    screen-features.h
+
     synth.c
     synth.h
     synth-data.h
 )
 
+# Link using keyword signature
 target_link_libraries(pico-synth PRIVATE
     pico_stdlib
     pico_multicore
 
+    # NEW: required hw libs used across the project
+    hardware_clocks
+    hardware_i2c
+    hardware_uart
+    hardware_pio
+
     pico_synth_engine
     pico_synth_midi
     pico_synth_tui
+
+    # NEW: features module
+    pico_synth_features
 )
 
 target_compile_definitions(tinyusb_device INTERFACE
@@ -77,3 +91,5 @@ pico_add_extra_outputs(pico-synth)
 add_subdirectory(engine)
 add_subdirectory(midi)
 add_subdirectory(tui)
+# NEW: features subdir
+add_subdirectory(features)
