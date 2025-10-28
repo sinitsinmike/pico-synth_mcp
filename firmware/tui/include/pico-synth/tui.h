@@ -58,9 +58,9 @@ typedef struct {
         uint b;
         uint64_t button_debounce_us;
         uint64_t rotate_debounce_us;
-        uint64_t button_long_us;  // long-press threshold (us)
+        uint64_t button_long_us;  /* long-press threshold (us) */
 
-        // private
+        /* private: long-press state */
         uint64_t _button_down_since;
         bool _long_sent;
 
@@ -89,7 +89,7 @@ typedef struct {
 
     void *ctx_data;
 
-    // global long-press handler
+    /* global long-press handler */
     ps_tui_long_press_cb_t on_long_press;
 
     // private
@@ -97,7 +97,7 @@ typedef struct {
     uint8_t _selected_line;
     const struct ps_tui_screen *_current_screen;
     uint64_t _current_screen_us;
-} ps_tui_t;
+};
 
 typedef bool (*ps_tui_screen_line_func_t) (ps_tui_t *tui, char *buf, size_t buflen);
 
