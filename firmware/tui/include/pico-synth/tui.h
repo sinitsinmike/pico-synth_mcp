@@ -11,10 +11,14 @@
 
 #define PS_TUI_EEPROM_BACKLOG_SIZE 1024
 
+typedef struct ps_tui ps_tui_t;
+typedef void (*ps_tui_long_press_cb_t)(ps_tui_t *tui);
+
 typedef enum {
     PS_TUI_ENCODER_ACTION_BUTTON = 1,
     PS_TUI_ENCODER_ACTION_ROTATE_CW,
     PS_TUI_ENCODER_ACTION_ROTATE_CCW,
+    PS_TUI_ENCODER_ACTION_BUTTON_LONG,
 } ps_tui_encoder_action_t;
 
 typedef enum {
@@ -54,6 +58,11 @@ typedef struct {
         uint b;
         uint64_t button_debounce_us;
         uint64_t rotate_debounce_us;
+        uint64_t button_long_us;
+
+        // private
+        uint64_t _button_down_since;
+        bool _long_sent;
 
         // private
         uint64_t _button_hit;
@@ -79,6 +88,8 @@ typedef struct {
     } oled;
 
     void *ctx_data;
+
+    ps_tui_long_press_cb_t on_long_press;
 
     // private
     uint8_t _selected;
