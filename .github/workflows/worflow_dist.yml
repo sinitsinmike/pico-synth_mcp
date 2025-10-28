@@ -1,0 +1,45 @@
+name: worflow_dist
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      SDK_REF: "1.5.1"
+      PICO_SDK_PATH: "${{ github.workspace }}/pico-sdk"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Fetch Pico SDK
+        run: |
+          git clone --depth 1 --branch ${SDK_REF} https://github.com/raspberrypi/pico-sdk.git "${PICO_SDK_PATH}"
+          git -C "${PICO_SDK_PATH}" submodule update --init --depth 1
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Configure (CMake + Ninja)
+        run: |
+          cmake             -S "${{ github.workspace }}/pico-synth/firmware"             -B "${{ github.workspace }}/build"             -G Ninja             -D CMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build "${{ github.workspace }}/build" --config Release -- -v
+
+      - name: Upload UF2
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pico-synth-uf2
+          path: |
+            ${{ github.workspace }}/build/*.uf2
+            ${{ github.workspace }}/build/**/*.uf2
