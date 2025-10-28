@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2021-2022 Rafael G. Martins
+# SPDX-License-Identifier: BSD-3-Clause
+
+# This file is included from firmware/CMakeLists.txt via add_subdirectory(features)
+# It builds the small features library used by the UI and MIDI monitor.
+
+cmake_minimum_required(VERSION 3.12)
+
+add_library(pico_synth_features
+    features.c
+    feature_midi_monitor.c
+)
+
+# Local includes plus headers from sibling components
+target_include_directories(pico_synth_features
+    PUBLIC
+        ${CMAKE_CURRENT_LIST_DIR}
+        ${CMAKE_CURRENT_LIST_DIR}/../tui/include
+        ${CMAKE_CURRENT_LIST_DIR}/../midi/include
+)
+
+# Pull in Pico SDK headers that provide <hardware/*.h> and stdlib,
+# and link against our sibling libraries that define the TUI/MIDI APIs.
+# Linking to hardware_* targets is required because their headers live
+# under those interface targets.
+target_link_libraries(pico_synth_features
+    PUBLIC
+        pico_stdlib
+        hardware_i2c
+        hardware_gpio
+        hardware_uart
+
+        pico_synth_tui
+        pico_synth_midi
+)
