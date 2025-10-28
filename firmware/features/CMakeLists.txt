@@ -1,14 +1,10 @@
-# Corrected CMake for features module
-# - Adds include dirs for TUI and MIDI public headers
-# - Links against pico_synth_tui and pico_synth_midi so headers/types resolve
-
 add_library(pico_synth_features
     features.c
     features-config.h
     feature_midi_monitor.c
 )
 
-# Public include directories so <pico-synth/tui.h> and <pico-synth/midi.h> are found
+# Public include dirs so <pico-synth/tui.h> and <pico-synth/midi.h> resolve
 target_include_directories(pico_synth_features
     PUBLIC
         ${CMAKE_CURRENT_LIST_DIR}
@@ -16,7 +12,7 @@ target_include_directories(pico_synth_features
         ${CMAKE_CURRENT_LIST_DIR}/../midi/include
 )
 
-# Link to core libs providing those headers/APIs
+# Link against the libraries that export those headers/APIs
 target_link_libraries(pico_synth_features
     PUBLIC
         pico_stdlib
