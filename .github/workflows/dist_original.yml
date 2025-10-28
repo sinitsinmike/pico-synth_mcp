@@ -1,4 +1,4 @@
-name: dist
+name: dist_original
 
 on:
   push:
