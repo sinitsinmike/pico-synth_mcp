@@ -1,83 +1,54 @@
-# SPDX-License-Identifier: BSD-3-Clause
-
-cmake_minimum_required(VERSION 3.12)
-
+cmake_minimum_required(VERSION 3.13)
 include(pico_sdk_import.cmake)
-
-project(pico-synth)
+project(pico_synth C CXX ASM)
 
 pico_sdk_init()
 
-add_executable(pico-synth
-    main.c
+# ---- Sources ---------------------------------------------------------
+file(GLOB_RECURSE SOURCE_C
+    "*.c"
+    "tui/*.c"
+    "midi/*.c"
+)
+# Exclude feature sources (built as a separate lib)
+list(FILTER SOURCE_C EXCLUDE REGEX "/features/")
 
-    eeprom-types.h
+add_executable(pico-synth ${SOURCE_C})
 
-    midi-impl.c
-    midi-notif.c
-    midi-notif.h
+# Generate PIO header(s) if present
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/driver-mcp4822.pio")
+  pico_generate_pio_header(pico-synth ${CMAKE_CURRENT_LIST_DIR}/driver-mcp4822.pio)
+endif()
 
-    screen-main.c
-    screen-main.h
-    screen-settings.c
-    screen-settings.h
-    screen-settings-channel.c
-    screen-settings-channel.h
-    screen-settings-channel-midi.c
-    screen-settings-channel-midi.h
-    screen-settings-channel-preset.c
-    screen-settings-channel-preset.h
-    screen-settings-channels.c
-    screen-settings-channels.h
-    screen-settings-eeprom-erase.c
-    screen-settings-eeprom-erase.h
-    screen-settings-eeprom-error.c
-    screen-settings-eeprom-error.h
-    screen-settings-eeprom-updating.c
-    screen-settings-eeprom-updating.h
-    screen-settings-preset.c
-    screen-settings-preset.h
-    screen-settings-preset-adsr-attack.c
-    screen-settings-preset-adsr-attack.h
-    screen-settings-preset-adsr-decay.c
-    screen-settings-preset-adsr-decay.h
-    screen-settings-preset-adsr-release.c
-    screen-settings-preset-adsr-release.h
-    screen-settings-preset-adsr-sustain.c
-    screen-settings-preset-adsr-sustain.h
-    screen-settings-preset-waveform.c
-    screen-settings-preset-waveform.h
-    screen-settings-presets.c
-    screen-settings-presets.h
-    screen-splash.c
-    screen-splash.h
-
-    synth.c
-    synth.h
-    synth-data.h
+target_include_directories(pico-synth PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/tui/include
+    ${CMAKE_CURRENT_LIST_DIR}/midi/include
 )
 
-# Main app links against Pico SDK and our internal libs
-target_link_libraries(pico-synth PRIVATE
+add_subdirectory(features)
+
+target_link_libraries(pico-synth
+    pico_synth_features
+
     pico_stdlib
     pico_multicore
 
-    pico_synth_engine
-    pico_synth_midi
-    pico_synth_tui
-    pico_synth_features
-)
+    hardware_pio
+    hardware_dma
+    hardware_gpio
+    hardware_i2c
+    hardware_uart
+    hardware_timer
+    hardware_clocks
+    hardware_pll
+    hardware_vreg
+    hardware_xosc
 
-# TinyUSB quirk fix
-target_compile_definitions(tinyusb_device INTERFACE
-    TUD_OPT_RP2040_USB_DEVICE_ENUMERATION_FIX=1
+    pico_unique_id
 )
 
 pico_enable_stdio_uart(pico-synth 1)
-pico_add_extra_outputs(pico-synth)
+pico_enable_stdio_usb(pico-synth 0)
 
-# Build internal components
-add_subdirectory(engine)
-add_subdirectory(midi)
-add_subdirectory(tui)
-add_subdirectory(features)
+pico_add_extra_outputs(pico-synth)
