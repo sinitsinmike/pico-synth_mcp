@@ -11,6 +11,8 @@
 #include "screen-main.h"
 #include "screen-splash.h"
 #include "synth.h"
+#include "features/features.h"
+#include "screen-features.h"
 #include "synth-data.h"
 
 
@@ -82,6 +84,10 @@ synth_init(synth_t *s)
     ps_midi_init(&s->midi);
     hard_assert(ps_tui_init(&s->tui) == PICO_OK);
 
+    // Features registry & long-press
+    ps_features_init(&s->tui, s);
+    s->tui.on_long_press = ps_features_open_menu;
+
     for (uint8_t i = 0; i < 2; i++)
         s->engine.channels[i].voices = channel_init(&s->channels[i]);
 
@@ -99,6 +105,7 @@ synth_core0(synth_t *s)
     while (1) {
         ps_midi_task(&s->midi);
         hard_assert(ps_tui_task(&s->tui) == PICO_OK);
+        ps_features_tick(&s->tui);
     }
 }
 

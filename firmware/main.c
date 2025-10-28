@@ -59,6 +59,7 @@ static synth_t synth = {
             .b = 7,
             .button_debounce_us = 250000,
             .rotate_debounce_us = 2000,
+            .button_long_us = 1500000,
         },
 
         .oled = {

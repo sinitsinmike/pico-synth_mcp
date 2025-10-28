@@ -13,6 +13,7 @@
 #include "screen-settings-preset-waveform.h"
 #include "midi-notif.h"
 #include "synth.h"
+#include "features/features.h"
 
 
 void
