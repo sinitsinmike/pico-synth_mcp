@@ -12,6 +12,7 @@
 #include "screen-settings-eeprom-updating.h"
 #include "screen-settings-presets.h"
 #include "screen-settings.h"
+#include "screen-features.h"
 
 
 static void
@@ -33,6 +34,13 @@ static const ps_tui_screen_menu_t menu = {
                 .next = &screen_settings_channels,
             },
         },
+        {
+    .content = "Features",
+    .action = {
+        .type = PS_TUI_SCREEN_ACTION_NEXT,
+        .next = &screen_features,
+    },
+},
         {
             .content = "Presets",
             .action = {
@@ -62,7 +70,7 @@ static const ps_tui_screen_menu_t menu = {
             },
         },
     },
-    .num_items = 5,
+    .num_items = 6,
 };
 
 const ps_tui_screen_t screen_settings = {
