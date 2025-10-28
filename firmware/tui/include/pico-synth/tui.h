@@ -58,7 +58,7 @@ typedef struct {
         uint b;
         uint64_t button_debounce_us;
         uint64_t rotate_debounce_us;
-        uint64_t button_long_us;
+        uint64_t button_long_us;  // long-press threshold (us)
 
         // private
         uint64_t _button_down_since;
@@ -89,6 +89,7 @@ typedef struct {
 
     void *ctx_data;
 
+    // global long-press handler
     ps_tui_long_press_cb_t on_long_press;
 
     // private
