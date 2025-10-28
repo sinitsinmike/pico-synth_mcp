@@ -1,0 +1,136 @@
+# /.github/workflows/release.yml
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XPACK_ARM_TOOLCHAIN_VERSION: "13.3.1-1.1"
+  SDK_REF: "1.5.1"
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project (pico-synth_mcp)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: pico-synth
+
+      - name: Checkout Pico SDK
+        uses: actions/checkout@v4
+        with:
+          repository: raspberrypi/pico-sdk
+          ref: ${{ env.SDK_REF }}
+          submodules: true
+          path: pico-sdk
+
+      - name: Install arm-none-eabi toolchain
+        run: |
+          set -euxo pipefail
+          wget "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v${XPACK_ARM_TOOLCHAIN_VERSION}/xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz"
+          wget "https://github.com/xpack-dev-tools/arm-none-eabi-gcc-xpack/releases/download/v${XPACK_ARM_TOOLCHAIN_VERSION}/xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz.sha"
+          sha256sum --check "xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz.sha"
+          tar -xvf "xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}-linux-x64.tar.gz"
+          echo "${{ github.workspace }}/xpack-arm-none-eabi-gcc-${XPACK_ARM_TOOLCHAIN_VERSION}/bin" >> $GITHUB_PATH
+          echo "PICO_SDK_PATH=${{ github.workspace }}/pico-sdk" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build cmake
+
+      - name: Configure (CMake)
+        run: |
+          cmake \
+            -B "${{ github.workspace }}/build" \
+            -D CMAKE_BUILD_TYPE=Release \
+            -G Ninja \
+            -S "${{ github.workspace }}/pico-synth/firmware"
+
+      - name: Build
+        run: cmake --build "${{ github.workspace }}/build" -j
+
+      - name: Ensure UF2 (fallback via elf2uf2 if needed)
+        run: |
+          set -euxo pipefail
+          BUILD_DIR="${{ github.workspace }}/build"
+          ELF="$BUILD_DIR/pico-synth.elf"
+          UF2="$BUILD_DIR/pico-synth.uf2"
+          if [ ! -f "$UF2" ] && [ -f "$ELF" ]; then
+            cmake -S "${PICO_SDK_PATH}/tools/elf2uf2" -B "${{ github.workspace }}/elf2uf2-build" -G Ninja
+            cmake --build "${{ github.workspace }}/elf2uf2-build" -j
+            "${{ github.workspace }}/elf2uf2-build/elf2uf2" "$ELF" "$UF2"
+          fi
+          ls -alh "$BUILD_DIR"
+
+      - name: Rename artifacts + checksums
+        id: naming
+        run: |
+          set -euxo pipefail
+          BUILD_DIR="${{ github.workspace }}/build"
+          TAG="${GITHUB_REF##*/}"
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+
+          # Source files
+          ELF="$BUILD_DIR/pico-synth.elf"
+          MAP="$BUILD_DIR/pico-synth.elf.map"
+          UF2="$BUILD_DIR/pico-synth.uf2"
+
+          # Target names
+          OUT_PREFIX="pico-synth_mcp-${TAG}-${SHORT_SHA}"
+          ELF_OUT="$BUILD_DIR/${OUT_PREFIX}.elf"
+          MAP_OUT="$BUILD_DIR/${OUT_PREFIX}.map"
+          UF2_OUT="$BUILD_DIR/${OUT_PREFIX}.uf2"
+
+          # Copy with new names (skip if missing)
+          [ -f "$ELF" ] && cp "$ELF" "$ELF_OUT"
+          [ -f "$MAP" ] && cp "$MAP" "$MAP_OUT"
+          [ -f "$UF2" ] && cp "$UF2" "$UF2_OUT"
+
+          # SHA256
+          pushd "$BUILD_DIR"
+          rm -f SHA256SUMS.txt
+          for f in "${OUT_PREFIX}.uf2" "${OUT_PREFIX}.elf" "${OUT_PREFIX}.map"; do
+            [ -f "$f" ] && sha256sum "$f" >> SHA256SUMS.txt
+          done
+          popd
+
+          echo "UF2_OUT=$UF2_OUT" >> $GITHUB_OUTPUT
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pico-synth_mcp-${{ github.ref_name }}
+          path: |
+            build/pico-synth_mcp-*.uf2
+            build/pico-synth_mcp-*.elf
+            build/pico-synth_mcp-*.map
+            build/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "pico-synth_mcp ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            build/pico-synth_mcp-*.uf2
+            build/pico-synth_mcp-*.elf
+            build/pico-synth_mcp-*.map
+            build/SHA256SUMS.txt
